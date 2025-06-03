@@ -44,4 +44,4 @@ USER appuser
 ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
 
 # Run the application
-CMD ["gunicorn", "kindergarten_meal_system.wsgi:application", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["gunicorn", "kindergarten_meal_system.wsgi:application", "--bind", "0.0.0:8000"]
