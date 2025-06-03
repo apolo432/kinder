@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+
+{% block title %}{{ ingredient.name }} - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-carrot me-2"></i>{{ ingredient.name }}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            {% if user.is_admin or user.is_manager %}
+            <a href="{% url 'add-ingredient-quantity' ingredient.id %}" class="btn btn-sm btn-success">
+                <i class="fas fa-plus me-1"></i>Add Quantity
+            </a>
+            <a href="{% url 'ingredient-update' ingredient.id %}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-edit me-1"></i>Edit
+            </a>
+            <a href="{% url 'ingredient-delete' ingredient.id %}" class="btn btn-sm btn-outline-danger">
+                <i class="fas fa-trash me-1"></i>Delete
+            </a>
+            {% endif %}
+            <a href="{% url 'ingredient-list' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Ingredients
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Ingredient Information -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>Ingredient Information
+            </div>
+            <div class="card-body">
+                <div class="mb-3 text-center">
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-{% if ingredient.is_below_threshold %}danger{% else %}success{% endif %}" 
+                             role="progressbar" 
+                             style="width: {% widthratio ingredient.current_quantity ingredient.threshold_quantity 100 %}%"
+                             aria-valuenow="{{ ingredient.current_quantity }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="{{ ingredient.threshold_quantity }}">
+                            {{ ingredient.current_quantity }}g
+                        </div>
+                    </div>
+                    <small class="text-muted">Current quantity vs. threshold</small>
+                </div>
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Current Quantity:</span>
+                    <span class="badge bg-{% if ingredient.is_below_threshold %}danger{% else %}success{% endif %} fs-6">
+                        {{ ingredient.current_quantity }}g
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Threshold Quantity:</span>
+                    <span>{{ ingredient.threshold_quantity }}g</span>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Unit Price:</span>
+                    <span>{{ ingredient.unit_price }} per kg</span>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Status:</span>
+                    <span class="{% if ingredient.is_below_threshold %}text-danger{% else %}text-success{% endif %}">
+                        {% if ingredient.is_below_threshold %}
+                        <i class="fas fa-exclamation-triangle me-1"></i>Below Threshold
+                        {% else %}
+                        <i class="fas fa-check-circle me-1"></i>Healthy
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Last Updated:</span>
+                    <span>{{ ingredient.updated_at|date:"M d, Y H:i" }}</span>
+                </div>
+                
+                {% if ingredient.is_below_threshold %}
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>This ingredient is below the threshold quantity!
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Deliveries -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-truck me-2"></i>Recent Deliveries</span>
+                <span class="badge bg-primary">Total: {{ total_delivered }}g</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for delivery in recent_deliveries %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ delivery.quantity }}g</h6>
+                            <small>{{ delivery.delivery_date|date:"M d, Y" }}</small>
+                        </div>
+                        <p class="mb-1">{{ delivery.notes|default:"No notes" }}</p>
+                        <small>Added by: {{ delivery.created_by.username }}</small>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-3">
+                        No recent deliveries recorded
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Usage -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-utensils me-2"></i>Recent Usage</span>
+                <span class="badge bg-primary">Total: {{ total_used }}g</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for usage in recent_usages %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ usage.quantity }}g</h6>
+                            <small>{{ usage.created_at|date:"M d, Y H:i" }}</small>
+                        </div>
+                        {% if usage.meal %}
+                        <p class="mb-1">
+                            Used in: <a href="{% url 'meal-detail' usage.meal.meal.id %}">{{ usage.meal.meal.name }}</a>
+                        </p>
+                        {% endif %}
+                        <small>Used by: {{ usage.created_by.username }}</small>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-3">
+                        No recent usage recorded
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Meals using this ingredient -->
+<div class="card mt-2">
+    <div class="card-header">
+        <i class="fas fa-utensils me-2"></i>Meals Using This Ingredient
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Meal</th>
+                    <th>Quantity Per Portion</th>
+                    <th>Created By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for meal_ingredient in ingredient.used_in_meals.all %}
+                <tr>
+                    <td>{{ meal_ingredient.meal.name }}</td>
+                    <td>{{ meal_ingredient.quantity }}g</td>
+                    <td>{{ meal_ingredient.meal.created_by.username }}</td>
+                    <td>
+                        <a href="{% url 'meal-detail' meal_ingredient.meal.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> View Meal
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                        This ingredient is not used in any meals yet
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // WebSocket connection for real-time updates
+    const inventorySocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/inventory/'
+    );
+    
+    // Handle inventory updates
+    inventorySocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'inventory_update' && data.ingredient_id === {{ ingredient.id }}) {
+            // Reload the page to show updated information
+            window.location.reload();
+        }
+    };
+</script>
+{% endblock %}

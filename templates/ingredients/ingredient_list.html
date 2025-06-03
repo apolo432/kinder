@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+
+{% block title %}Ingredients - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-carrot me-2"></i>Ingredients</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if user.is_admin or user.is_manager %}
+        <a href="{% url 'ingredient-create' %}" class="btn btn-sm btn-success me-2">
+            <i class="fas fa-plus me-1"></i>Add Ingredient
+        </a>
+        <a href="{% url 'delivery-list' %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-truck me-1"></i>Deliveries
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-search me-2"></i>Filter Ingredients</span>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+            <i class="fas fa-filter"></i>
+        </button>
+    </div>
+    <div class="collapse" id="filterCollapse">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ request.GET.name|default:'' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All</option>
+                        <option value="low" {% if request.GET.status == 'low' %}selected{% endif %}>Low Stock</option>
+                        <option value="healthy" {% if request.GET.status == 'healthy' %}selected{% endif %}>Healthy Stock</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="sort" class="form-label">Sort By</label>
+                    <select class="form-select" id="sort" name="sort">
+                        <option value="name" {% if request.GET.sort == 'name' %}selected{% endif %}>Name</option>
+                        <option value="quantity" {% if request.GET.sort == 'quantity' %}selected{% endif %}>Quantity</option>
+                        <option value="updated" {% if request.GET.sort == 'updated' %}selected{% endif %}>Last Updated</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    <a href="{% url 'ingredient-list' %}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-list me-2"></i>Ingredient List
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Current Quantity</th>
+                        <th>Status</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="ingredients-table">
+                    {% if ingredients %}
+                        {% for ingredient in ingredients %}
+                        <tr id="ingredient-{{ ingredient.id }}" class="{% if ingredient.is_below_threshold %}table-danger{% endif %}">
+                            <td>{{ ingredient.name }}</td>
+                            <td>
+                                <span class="badge bg-{% if ingredient.is_below_threshold %}danger{% else %}success{% endif %}">
+                                    {{ ingredient.current_quantity }}g
+                                </span>
+                            </td>
+                            <td>
+                                {% if ingredient.is_below_threshold %}
+                                <span class="text-danger">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>Below Threshold
+                                </span>
+                                {% else %}
+                                <span class="text-success">
+                                    <i class="fas fa-check-circle me-1"></i>Healthy
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ ingredient.updated_at|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'ingredient-detail' ingredient.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if user.is_admin or user.is_manager %}
+                                    <a href="{% url 'add-ingredient-quantity' ingredient.id %}" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-plus"></i>
+                                    </a>
+                                    <a href="{% url 'ingredient-update' ingredient.id %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'ingredient-delete' ingredient.id %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-info-circle me-2"></i>No ingredients found
+                                </div>
+                                {% if user.is_admin or user.is_manager %}
+                                <a href="{% url 'ingredient-create' %}" class="btn btn-sm btn-success mt-2">
+                                    <i class="fas fa-plus me-1"></i>Add Ingredient
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination if needed -->
+{% if is_paginated %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1" aria-label="First">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // WebSocket connection for real-time inventory updates
+    const inventorySocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/inventory/'
+    );
+
+    // Handle inventory updates
+    inventorySocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+
+        if (data.type === 'inventory_update') {
+            // Update the ingredient row in the table
+            updateIngredientRow(data);
+        } else if (data.type === 'low_ingredient_alert') {
+            // Show a notification for low ingredient
+            showNotification('Low Ingredient Alert',
+                `${data.ingredient_name} is running low (${data.current_quantity}g/${data.threshold_quantity}g)`,
+                'warning');
+        }
+    };
+
+    // Function to update an ingredient row in the table
+    function updateIngredientRow(data) {
+        const row = document.getElementById(`ingredient-${data.ingredient_id}`);
+        if (!row) return;
+
+        // Update quantity
+        const quantityCell = row.querySelector('td:nth-child(2)');
+        const badge = quantityCell.querySelector('.badge');
+        badge.textContent = `${data.current_quantity}g`;
+        badge.className = `badge bg-${data.is_below_threshold ? 'danger' : 'success'}`;
+
+        // Update status
+        const statusCell = row.querySelector('td:nth-child(3)');
+        if (data.is_below_threshold) {
+            statusCell.innerHTML = `
+                <span class="text-danger">
+                    <i class="fas fa-exclamation-triangle me-1"></i>Below Threshold
+                </span>
+            `;
+            row.classList.add('table-danger');
+        } else {
+            statusCell.innerHTML = `
+                <span class="text-success">
+                    <i class="fas fa-check-circle me-1"></i>Healthy
+                </span>
+            `;
+            row.classList.remove('table-danger');
+        }
+
+        // Highlight the updated row
+        row.classList.add('highlight');
+    }
+
+    // Function to show a notification
+    function showNotification(title, message, type) {
+        // Create alert container if it doesn't exist
+        let alertContainer = document.querySelector('.alert-container');
+        if (!alertContainer) {
+            alertContainer = document.createElement('div');
+            alertContainer.className = 'alert-container';
+            document.body.appendChild(alertContainer);
+        }
+
+        // Create the alert
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            <strong>${title}</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        // Add the alert to the container
+        alertContainer.appendChild(alert);
+
+        // Auto-close after 5 seconds
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    }
+</script>
+{% endblock %}

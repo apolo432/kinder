@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+
+{% block title %}WebSocket Test - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-plug me-2"></i>WebSocket Test</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-tools me-2"></i>WebSocket Test Tools
+            </div>
+            <div class="card-body">
+                <p>Use these tools to test the WebSocket connections:</p>
+                
+                <div class="mb-4">
+                    <h5>Connection Status:</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Inventory WebSocket
+                            <span id="inventory-status" class="badge bg-secondary">Checking...</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Meal Serving WebSocket
+                            <span id="meal-status" class="badge bg-secondary">Checking...</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Test Inventory WebSocket:</h5>
+                    <button id="test-low-ingredients" class="btn btn-primary">
+                        <i class="fas fa-carrot me-1"></i>Request Low Ingredients
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Simulate Events:</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <button id="sim-ingredient-update" class="btn btn-outline-primary mb-2 w-100">
+                                <i class="fas fa-sync me-1"></i>Ingredient Update
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button id="sim-meal-served" class="btn btn-outline-success mb-2 w-100">
+                                <i class="fas fa-utensils me-1"></i>Meal Served
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-exchange-alt me-2"></i>WebSocket Messages
+            </div>
+            <div class="card-body">
+                <h5>Message Log:</h5>
+                <div id="message-log" class="border p-3 mb-3" style="height: 300px; overflow-y: auto; background-color: #f8f9fa; font-family: monospace;">
+                    <!-- Messages will be appended here -->
+                    <div class="text-muted">Waiting for WebSocket messages...</div>
+                </div>
+                
+                <h5>Send Custom Message:</h5>
+                <div class="mb-3">
+                    <label for="ws-channel" class="form-label">Channel:</label>
+                    <select id="ws-channel" class="form-select">
+                        <option value="inventory">Inventory</option>
+                        <option value="meal-servings">Meal Servings</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="ws-message" class="form-label">Message (JSON):</label>
+                    <textarea id="ws-message" class="form-control" rows="4">{"type": "test_message", "content": "Hello WebSocket"}</textarea>
+                </div>
+                <button id="send-message" class="btn btn-primary">
+                    <i class="fas fa-paper-plane me-1"></i>Send Message
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize WebSocket connections
+        const inventorySocket = new WebSocket('ws://' + window.location.host + '/ws/inventory/');
+        const mealServingSocket = new WebSocket('ws://' + window.location.host + '/ws/meal-servings/');
+        
+        // Status elements
+        const inventoryStatus = document.getElementById('inventory-status');
+        const mealStatus = document.getElementById('meal-status');
+        const messageLog = document.getElementById('message-log');
+        
+        // Function to log messages
+        function logMessage(source, type, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `mb-1 ${type === 'error' ? 'text-danger' : type === 'sent' ? 'text-primary' : ''}`;
+            entry.innerHTML = `<strong>${timestamp} [${source}]:</strong> ${message}`;
+            messageLog.appendChild(entry);
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+        
+        // Clear initial message
+        messageLog.innerHTML = '';
+        
+        // Inventory WebSocket handlers
+        inventorySocket.onopen = function(e) {
+            inventoryStatus.textContent = 'Connected';
+            inventoryStatus.className = 'badge bg-success';
+            logMessage('Inventory', 'info', 'WebSocket connection established');
+        };
+        
+        inventorySocket.onclose = function(e) {
+            inventoryStatus.textContent = 'Disconnected';
+            inventoryStatus.className = 'badge bg-danger';
+            logMessage('Inventory', 'error', `WebSocket connection closed: ${e.code}`);
+        };
+        
+        inventorySocket.onerror = function(e) {
+            inventoryStatus.textContent = 'Error';
+            inventoryStatus.className = 'badge bg-danger';
+            logMessage('Inventory', 'error', 'WebSocket connection error');
+        };
+        
+        inventorySocket.onmessage = function(e) {
+            logMessage('Inventory', 'received', e.data);
+        };
+        
+        // Meal Serving WebSocket handlers
+        mealServingSocket.onopen = function(e) {
+            mealStatus.textContent = 'Connected';
+            mealStatus.className = 'badge bg-success';
+            logMessage('Meal Serving', 'info', 'WebSocket connection established');
+        };
+        
+        mealServingSocket.onclose = function(e) {
+            mealStatus.textContent = 'Disconnected';
+            mealStatus.className = 'badge bg-danger';
+            logMessage('Meal Serving', 'error', `WebSocket connection closed: ${e.code}`);
+        };
+        
+        mealServingSocket.onerror = function(e) {
+            mealStatus.textContent = 'Error';
+            mealStatus.className = 'badge bg-danger';
+            logMessage('Meal Serving', 'error', 'WebSocket connection error');
+        };
+        
+        mealServingSocket.onmessage = function(e) {
+            logMessage('Meal Serving', 'received', e.data);
+        };
+        
+        // Test buttons
+        document.getElementById('test-low-ingredients').addEventListener('click', function() {
+            const message = JSON.stringify({
+                'type': 'get_low_ingredients'
+            });
+            inventorySocket.send(message);
+            logMessage('Inventory', 'sent', message);
+        });
+        
+        document.getElementById('sim-ingredient-update').addEventListener('click', function() {
+            const message = JSON.stringify({
+                'type': 'inventory_update',
+                'ingredient_id': 1,
+                'ingredient_name': 'Test Ingredient',
+                'current_quantity': 500,
+                'threshold_quantity': 1000,
+                'is_below_threshold': true
+            });
+            inventorySocket.send(message);
+            logMessage('Inventory', 'sent', message);
+        });
+        
+        document.getElementById('sim-meal-served').addEventListener('click', function() {
+            const message = JSON.stringify({
+                'type': 'meal_served',
+                'meal_id': 1,
+                'meal_name': 'Test Meal',
+                'servings': 2,
+                'served_by': 'Test User',
+                'timestamp': new Date().toISOString()
+            });
+            mealServingSocket.send(message);
+            logMessage('Meal Serving', 'sent', message);
+        });
+        
+        // Custom message sender
+        document.getElementById('send-message').addEventListener('click', function() {
+            const channel = document.getElementById('ws-channel').value;
+            const messageText = document.getElementById('ws-message').value;
+            
+            try {
+                // Validate JSON
+                const messageObj = JSON.parse(messageText);
+                const message = JSON.stringify(messageObj);
+                
+                if (channel === 'inventory') {
+                    inventorySocket.send(message);
+                    logMessage('Inventory', 'sent', message);
+                } else {
+                    mealServingSocket.send(message);
+                    logMessage('Meal Serving', 'sent', message);
+                }
+            } catch (e) {
+                logMessage('Error', 'error', 'Invalid JSON message: ' + e.message);
+            }
+        });
+    });
+</script>
+{% endblock %}

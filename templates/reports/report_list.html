@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+
+{% block title %}Monthly Reports - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-chart-bar me-2"></i>Monthly Reports</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'generate-report' %}" class="btn btn-sm btn-success">
+            <i class="fas fa-file-alt me-1"></i>Generate New Report
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-list me-2"></i>Available Reports
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Period</th>
+                        <th>Meals Served</th>
+                        <th>Total Servings</th>
+                        <th>Discrepancy Rate</th>
+                        <th>Status</th>
+                        <th>Generated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if reports %}
+                        {% for report in reports %}
+                        <tr>
+                            <td>{{ report.period_label }}</td>
+                            <td>{{ report.total_meals_served }}</td>
+                            <td>{{ report.total_servings }}</td>
+                            <td>
+                                <span class="badge bg-{% if report.high_discrepancy %}danger{% elif report.discrepancy_rate > 5 %}warning{% else %}success{% endif %}">
+                                    {{ report.discrepancy_rate }}%
+                                </span>
+                            </td>
+                            <td>
+                                {% if report.high_discrepancy %}
+                                <span class="text-danger">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>High Discrepancy
+                                </span>
+                                {% else %}
+                                <span class="text-success">
+                                    <i class="fas fa-check-circle me-1"></i>Normal
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ report.generated_at|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <a href="{% url 'report-detail' report.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-info-circle me-2"></i>No reports found
+                                </div>
+                                <a href="{% url 'generate-report' %}" class="btn btn-sm btn-success mt-2">
+                                    <i class="fas fa-file-alt me-1"></i>Generate New Report
+                                </a>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Discrepancy Chart -->
+{% if reports %}
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="fas fa-chart-line me-2"></i>Monthly Discrepancy Rate Trend
+    </div>
+    <div class="card-body">
+        <canvas id="discrepancyChart" height="200"></canvas>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if reports %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch data for the discrepancy chart
+        fetch('/reports/api/discrepancy-data/')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('discrepancyChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(item => item.period_label),
+                        datasets: [
+                            {
+                                label: 'Discrepancy Rate (%)',
+                                data: data.map(item => item.discrepancy_rate),
+                                backgroundColor: data.map(item => item.high_discrepancy ? 'rgba(255, 99, 132, 0.2)' : 'rgba(75, 192, 192, 0.2)'),
+                                borderColor: data.map(item => item.high_discrepancy ? 'rgb(255, 99, 132)' : 'rgb(75, 192, 192)'),
+                                borderWidth: 2,
+                                tension: 0.1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                suggestedMax: 20
+                            }
+                        },
+                        elements: {
+                            point: {
+                                radius: 5,
+                                hitRadius: 10,
+                                hoverRadius: 7,
+                            }
+                        }
+                    }
+                });
+            });
+    });
+</script>
+{% endif %}
+{% endblock %}

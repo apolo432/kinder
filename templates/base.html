@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kindergarten Meal System{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --info-color: #1abc9c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+        }
+
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-success {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .badge-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+
+        .badge-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .sidebar {
+            background-color: #343a40;
+            color: white;
+            min-height: calc(100vh - 56px);
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            padding: 10px 20px;
+            display: block;
+            transition: all 0.3s;
+        }
+
+        .sidebar a:hover {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar a.active {
+            color: white;
+            background-color: var(--primary-color);
+        }
+
+        .sidebar i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-heading {
+            padding: 10px 15px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .low-stock {
+            color: var(--danger-color);
+            font-weight: bold;
+        }
+
+        .healthy-stock {
+            color: var(--secondary-color);
+        }
+
+        /* Real-time update animation */
+        @keyframes highlight {
+            0% {
+                background-color: rgba(46, 204, 113, 0.2);
+            }
+            100% {
+                background-color: transparent;
+            }
+        }
+
+        .highlight {
+            animation: highlight 2s ease-out;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+        }
+
+        /* Loading spinner */
+        .spinner-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            max-width: 300px;
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'dashboard' %}">
+            <i class="fas fa-utensils me-2"></i>Kindergarten Meal System
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                {% if user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i>{{ user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-id-card me-2"></i>Profile</a>
+                            </li>
+                            {% if user.is_admin or user.is_superuser %}
+                                <li><a class="dropdown-item" href="{% url 'user-list' %}"><i
+                                        class="fas fa-users-cog me-2"></i>Manage Users</a></li>
+                            {% endif %}
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'logout' %}"><i
+                                    class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}"><i class="fas fa-sign-in-alt me-1"></i>Login</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        {% if user.is_authenticated %}
+            <div class="col-md-2 d-none d-md-block sidebar p-0">
+                <div class="pt-3">
+                    <div class="sidebar-heading">Main</div>
+                    <a href="{% url 'dashboard' %}"
+                       class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+
+                    <div class="sidebar-heading">Kitchen</div>
+                    <a href="{% url 'ingredient-list' %}"
+                       class="{% if 'ingredient' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-carrot"></i> Ingredients
+                    </a>
+                    <a href="{% url 'meal-list' %}"
+                       class="{% if 'meal' in request.resolver_match.url_name and not 'serve' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-drumstick-bite"></i> Meals
+                    </a>
+                    <a href="{% url 'serving-list' %}"
+                       class="{% if 'serving' in request.resolver_match.url_name or 'serve-meal' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-utensils"></i> Meal Servings
+                    </a>
+
+                    {% if user.is_admin or user.is_manager %}
+                        <div class="sidebar-heading">Reports</div>
+                        <a href="{% url 'report-list' %}"
+                           class="{% if 'report' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="fas fa-chart-bar"></i> Monthly Reports
+                        </a>
+                        <a href="{% url 'delivery-list' %}"
+                           class="{% if 'delivery' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="fas fa-truck"></i> Deliveries
+                        </a>
+                    {% endif %}
+
+                    {% if user.is_admin %}
+                        <div class="sidebar-heading">Admin</div>
+                        <a href="{% url 'user-list' %}"
+                           class="{% if 'user' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="fas fa-users"></i> Users
+                        </a>
+                        <a href="{% url 'log-list' %}"
+                           class="{% if 'log' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="fas fa-history"></i> System Logs
+                        </a>
+                        <a href="/admin/" target="_blank">
+                            <i class="fas fa-cog"></i> Admin Panel
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <main class="col-md-10 ms-sm-auto px-md-4 content">
+        {% else %}
+            <main class="col-12 px-md-4 content">
+        {% endif %}
+
+        <!-- Messages -->
+        {% if messages %}
+            <div class="alert-container">
+                {% for message in messages %}
+                    <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+
+        <div class="footer">
+            <p>&copy; 2025 Kindergarten Meal System | Developed for efficient meal tracking and inventory management</p>
+        </div>
+        </main>
+    </div>
+</div>
+
+<!-- Bootstrap JS Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Custom JS -->
+<script>
+    // Auto-close alerts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function (alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    });
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete {{ user_obj.username }} - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-user-times me-2"></i>Delete User: {{ user_obj.username }}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'user-list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Users
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+            </div>
+            <div class="card-body">
+                <p class="lead">Are you sure you want to delete the user <strong>{{ user_obj.username }}</strong>?</p>
+                
+                <div class="mb-4">
+                    <h5>User Details:</h5>
+                    <ul>
+                        <li>Full Name: {{ user_obj.get_full_name|default:"Not provided" }}</li>
+                        <li>Email: {{ user_obj.email|default:"Not provided" }}</li>
+                        <li>Role: {{ user_obj.get_role_display }}</li>
+                        <li>Status: {% if user_obj.is_active %}Active{% else %}Inactive{% endif %}</li>
+                    </ul>
+                </div>
+                
+                {% if user_obj.served_meals.exists %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This user has served {{ user_obj.served_meals.count }} meals. 
+                    The meal serving history will be preserved, but the user will no longer be able to log in.
+                </div>
+                {% endif %}
+                
+                {% if user_obj == request.user %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> You are deleting your own account! You will be logged out and won't be able to log in again.
+                </div>
+                {% endif %}
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'user-list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i>Confirm Delete
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

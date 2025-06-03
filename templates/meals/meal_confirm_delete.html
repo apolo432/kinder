@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete {{ meal.name }} - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-trash me-2"></i>Delete Meal: {{ meal.name }}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'meal-detail' meal.id %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Meal
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+            </div>
+            <div class="card-body">
+                <p class="lead">Are you sure you want to delete the meal <strong>{{ meal.name }}</strong>?</p>
+                
+                <div class="mb-4">
+                    <h5>Ingredients in this meal:</h5>
+                    <ul>
+                        {% for meal_ingredient in meal.ingredients.all %}
+                        <li>{{ meal_ingredient.ingredient.name }} ({{ meal_ingredient.quantity }}g per portion)</li>
+                        {% empty %}
+                        <li>No ingredients defined</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                {% if meal.servings.exists %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This meal has been served {{ meal.servings.count }} time(s). 
+                    The serving history will be preserved, but you won't be able to serve this meal anymore.
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-danger">
+                    <i class="fas fa-trash me-2"></i>
+                    <strong>Notice:</strong> This action cannot be undone. All data related to this meal recipe will be permanently deleted.
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'meal-detail' meal.id %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i>Confirm Delete
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

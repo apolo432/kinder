@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+
+{% block title %}Report: {{ report.period_label }} - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-chart-bar me-2"></i>Report: {{ report.period_label }}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'report-list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Reports
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Meals Served</h6>
+                        <h2 class="mb-0">{{ report.total_meals_served }}</h2>
+                    </div>
+                    <i class="fas fa-utensils fa-2x"></i>
+                </div>
+                <small>Different meal types</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total Servings</h6>
+                        <h2 class="mb-0">{{ report.total_servings }}</h2>
+                    </div>
+                    <i class="fas fa-users fa-2x"></i>
+                </div>
+                <small>Portions served</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Potential Servings</h6>
+                        <h2 class="mb-0">{{ report.total_potential_servings }}</h2>
+                    </div>
+                    <i class="fas fa-chart-pie fa-2x"></i>
+                </div>
+                <small>Based on ingredients</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white {% if report.high_discrepancy %}bg-danger{% else %}bg-secondary{% endif %} mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Discrepancy Rate</h6>
+                        <h2 class="mb-0">{{ report.discrepancy_rate }}%</h2>
+                    </div>
+                    <i class="fas fa-chart-line fa-2x"></i>
+                </div>
+                <small>
+                    {% if report.high_discrepancy %}
+                    <i class="fas fa-exclamation-triangle me-1"></i>High discrepancy detected!
+                    {% else %}
+                    Within acceptable limits
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Ingredients Usage -->
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-carrot me-2"></i>Top Ingredients by Usage</span>
+                <span class="badge bg-primary">Total: {{ report.total_ingredients_used }}g used</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ingredient</th>
+                                <th>Used</th>
+                                <th>Delivered</th>
+                                <th>Discrepancy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usage in top_ingredients %}
+                            <tr>
+                                <td>{{ usage.ingredient_name }}</td>
+                                <td>{{ usage.quantity_used }}g</td>
+                                <td>{{ usage.quantity_delivered }}g</td>
+                                <td>
+                                    <span class="badge {% if usage.discrepancy < 0 %}bg-danger{% elif usage.discrepancy > 0 %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ usage.discrepancy }}g
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">
+                                    No ingredient usage data available
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        {% if high_discrepancy_ingredients %}
+        <div class="card mb-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <i class="fas fa-exclamation-triangle me-2"></i>Ingredients with High Discrepancy
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ingredient</th>
+                                <th>Used</th>
+                                <th>Delivered</th>
+                                <th>Discrepancy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usage in high_discrepancy_ingredients %}
+                            <tr>
+                                <td>{{ usage.ingredient_name }}</td>
+                                <td>{{ usage.quantity_used }}g</td>
+                                <td>{{ usage.quantity_delivered }}g</td>
+                                <td>
+                                    <span class="badge bg-danger">
+                                        {{ usage.discrepancy }}g
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-light">
+                <small class="text-danger">
+                    <i class="fas fa-exclamation-circle me-1"></i>
+                    These ingredients show a significant discrepancy between delivery and usage.
+                </small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Top Meals -->
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-drumstick-bite me-2"></i>Top Meals by Servings
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Meal</th>
+                                <th>Servings</th>
+                                <th>Ingredients Used</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for meal in top_meals %}
+                            <tr>
+                                <td>{{ meal.meal_name }}</td>
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ meal.servings_count }}
+                                    </span>
+                                </td>
+                                <td>{{ meal.total_ingredients_used }}g</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-3">
+                                    No meal serving data available
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Usage vs Delivery Chart -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-chart-bar me-2"></i>Ingredients Usage vs Delivery
+            </div>
+            <div class="card-body">
+                <canvas id="ingredientsChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Discrepancy Analysis -->
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-search me-2"></i>Discrepancy Analysis
+    </div>
+    <div class="card-body">
+        <p>
+            For this period, the discrepancy rate is <strong>{{ report.discrepancy_rate }}%</strong>, which means that
+            <strong>{{ report.total_potential_servings|sub:report.total_servings }}</strong> more portions could have been served
+            based on the ingredients received.
+        </p>
+        
+        {% if report.high_discrepancy %}
+        <div class="alert alert-danger">
+            <h5><i class="fas fa-exclamation-triangle me-2"></i>High Discrepancy Detected</h5>
+            <p>
+                The discrepancy rate exceeds the 15% threshold. This may indicate:
+            </p>
+            <ul>
+                <li>Potential waste of ingredients</li>
+                <li>Incorrect recording of meal servings</li>
+                <li>Possible misuse of ingredients</li>
+                <li>Incorrect portion sizes or recipe measurements</li>
+            </ul>
+            <p>
+                It is recommended to investigate the specific ingredients with high discrepancy shown above and
+                implement better tracking procedures.
+            </p>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <h5><i class="fas fa-check-circle me-2"></i>Normal Discrepancy Range</h5>
+            <p>
+                The discrepancy rate is within the acceptable range. This indicates good management of ingredients and accurate recording of meals served.
+            </p>
+        </div>
+        {% endif %}
+        
+        <h5 class="mt-4">Report Details</h5>
+        <div class="row">
+            <div class="col-md-6">
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Period
+                        <span>{{ report.period_label }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Generated At
+                        <span>{{ report.generated_at|date:"M d, Y H:i" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Total Ingredients Used
+                        <span>{{ report.total_ingredients_used }}g</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Total Ingredients Delivered
+                        <span>{{ report.total_ingredients_delivered }}g</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Total Meals Served
+                        <span>{{ report.total_meals_served }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Total Servings
+                        <span>{{ report.total_servings }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Total Potential Servings
+                        <span>{{ report.total_potential_servings }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Discrepancy Rate
+                        <span class="badge {% if report.high_discrepancy %}bg-danger{% else %}bg-success{% endif %} rounded-pill">
+                            {{ report.discrepancy_rate }}%
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Create ingredients chart
+        const ingredientsCtx = document.getElementById('ingredientsChart').getContext('2d');
+        
+        // Get data from top ingredients
+        const ingredientNames = [
+            {% for usage in top_ingredients|slice:":10" %}
+            '{{ usage.ingredient_name }}',
+            {% endfor %}
+        ];
+        
+        const usedData = [
+            {% for usage in top_ingredients|slice:":10" %}
+            {{ usage.quantity_used }},
+            {% endfor %}
+        ];
+        
+        const deliveredData = [
+            {% for usage in top_ingredients|slice:":10" %}
+            {{ usage.quantity_delivered }},
+            {% endfor %}
+        ];
+        
+        // Create chart
+        new Chart(ingredientsCtx, {
+            type: 'bar',
+            data: {
+                labels: ingredientNames,
+                datasets: [
+                    {
+                        label: 'Used (g)',
+                        data: usedData,
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgb(255, 99, 132)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Delivered (g)',
+                        data: deliveredData,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgb(54, 162, 235)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+
+{% block title %}System Logs - Kindergarten Meal System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .log-card {
+        transition: transform 0.2s;
+    }
+    .log-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+    .action-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .model-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .log-details {
+        max-height: 100px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+    .filters-card {
+        background-color: #f8f9fa;
+        border-left: 4px solid var(--primary-color);
+    }
+    .log-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-history me-2"></i>System Activity Logs</h1>
+    <div class="text-muted">
+        <i class="fas fa-info-circle me-1"></i>
+        Total: {{ total_logs }} logs
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card filters-card mb-4">
+    <div class="card-header">
+        <i class="fas fa-filter me-2"></i>Filters
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" class="form-control" id="search" name="search" 
+                       value="{{ current_filters.search }}" placeholder="Search actions, objects, users...">
+            </div>
+            <div class="col-md-2">
+                <label for="user" class="form-label">User</label>
+                <select class="form-select" id="user" name="user">
+                    <option value="">All Users</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" {% if current_filters.user == user.id|stringformat:"s" %}selected{% endif %}>
+                        {{ user.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="action_type" class="form-label">Action</label>
+                <select class="form-select" id="action_type" name="action_type">
+                    <option value="">All Actions</option>
+                    {% for action_code, action_name in action_types %}
+                    <option value="{{ action_code }}" {% if current_filters.action_type == action_code %}selected{% endif %}>
+                        {{ action_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="model_type" class="form-label">Model</label>
+                <select class="form-select" id="model_type" name="model_type">
+                    <option value="">All Models</option>
+                    {% for model_code, model_name in model_types %}
+                    <option value="{{ model_code }}" {% if current_filters.model_type == model_code %}selected{% endif %}>
+                        {{ model_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label for="date_from" class="form-label">From</label>
+                <input type="date" class="form-control" id="date_from" name="date_from" 
+                       value="{{ current_filters.date_from }}">
+            </div>
+            <div class="col-md-1">
+                <label for="date_to" class="form-label">To</label>
+                <input type="date" class="form-control" id="date_to" name="date_to" 
+                       value="{{ current_filters.date_to }}">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'log-list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logs -->
+{% if logs %}
+<div class="row">
+    {% for log in logs %}
+    <div class="col-12 mb-3">
+        <div class="card log-card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-start mb-2">
+                            <div class="me-3">
+                                {% if log.action_type == 'CREATE' %}
+                                    <span class="badge bg-success action-badge">
+                                        <i class="fas fa-plus"></i> {{ log.get_action_type_display }}
+                                    </span>
+                                {% elif log.action_type == 'UPDATE' %}
+                                    <span class="badge bg-info action-badge">
+                                        <i class="fas fa-edit"></i> {{ log.get_action_type_display }}
+                                    </span>
+                                {% elif log.action_type == 'DELETE' %}
+                                    <span class="badge bg-danger action-badge">
+                                        <i class="fas fa-trash"></i> {{ log.get_action_type_display }}
+                                    </span>
+                                {% elif log.action_type == 'SERVE' %}
+                                    <span class="badge bg-warning action-badge">
+                                        <i class="fas fa-utensils"></i> {{ log.get_action_type_display }}
+                                    </span>
+                                {% elif log.action_type == 'ADD_QUANTITY' %}
+                                    <span class="badge bg-primary action-badge">
+                                        <i class="fas fa-plus-circle"></i> Add Stock
+                                    </span>
+                                {% elif log.action_type == 'USE_QUANTITY' %}
+                                    <span class="badge bg-secondary action-badge">
+                                        <i class="fas fa-minus-circle"></i> Use Stock
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark action-badge">
+                                        <i class="fas fa-question"></i> {{ log.get_action_type_display|default:"Action" }}
+                                    </span>
+                                {% endif %}
+                                
+                                {% if log.model_type %}
+                                <span class="badge bg-light text-dark model-badge">
+                                    {% if log.model_type == 'ingredient' %}
+                                        <i class="fas fa-carrot"></i>
+                                    {% elif log.model_type == 'meal' %}
+                                        <i class="fas fa-drumstick-bite"></i>
+                                    {% elif log.model_type == 'meal_serving' %}
+                                        <i class="fas fa-utensils"></i>
+                                    {% elif log.model_type == 'ingredient_delivery' %}
+                                        <i class="fas fa-truck"></i>
+                                    {% elif log.model_type == 'ingredient_usage' %}
+                                        <i class="fas fa-minus"></i>
+                                    {% else %}
+                                        <i class="fas fa-cube"></i>
+                                    {% endif %}
+                                    {{ log.get_model_type_display }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">{{ log.action }}</h6>
+                                
+                                {% if log.details %}
+                                <div class="log-details">
+                                    <strong>Details:</strong><br>
+                                    {% for key, value in log.details.items %}
+                                        <small><strong>{{ key|title }}:</strong> {{ value }}</small><br>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="log-meta text-end">
+                            <div class="mb-1">
+                                <i class="fas fa-user me-1"></i>
+                                <strong>{{ log.user.username }}</strong>
+                                {% if log.user.first_name %}
+                                    ({{ log.user.first_name }} {{ log.user.last_name }})
+                                {% endif %}
+                            </div>
+                            <div class="mb-1">
+                                <i class="fas fa-clock me-1"></i>
+                                {{ log.timestamp|date:"M d, Y" }} at {{ log.timestamp|time:"H:i" }}
+                            </div>
+                            {% if log.object_id %}
+                            <div>
+                                <i class="fas fa-hashtag me-1"></i>
+                                ID: {{ log.object_id }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav aria-label="Log pagination">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% for key, value in current_filters.items %}{% if value %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <li class="page-item active">
+            <span class="page-link">{{ num }}</span>
+        </li>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <li class="page-item">
+            <a class="page-link" href="?{% for key, value in current_filters.items %}{% if value %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% for key, value in current_filters.items %}{% if value %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="fas fa-search text-muted" style="font-size: 3rem;"></i>
+        <h4 class="mt-3 text-muted">No logs found</h4>
+        <p class="text-muted">Try adjusting your filters or check back later.</p>
+        <a href="{% url 'log-list' %}" class="btn btn-primary">
+            <i class="fas fa-refresh me-2"></i>Clear Filters
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form when select values change
+    const selects = document.querySelectorAll('select');
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+    
+    // Date inputs auto-submit
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+});
+</script>
+{% endblock %}

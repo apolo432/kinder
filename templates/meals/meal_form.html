@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+{% if form.instance.id %}Edit {{ form.instance.name }}{% else %}Add New Meal{% endif %} - Kindergarten Meal System
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ingredient-form {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        position: relative;
+    }
+
+    .delete-row {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-{% if form.instance.id %}edit{% else %}plus{% endif %} me-2"></i>
+        {% if form.instance.id %}Edit {{ form.instance.name }}{% else %}Add New Meal{% endif %}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'meal-list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Meals
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-drumstick-bite me-2"></i>Meal Information
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            {{ form.name|as_crispy_field }}
+                        </div>
+                        <div class="col-md-12">
+                            {{ form.description|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <h4 class="mt-4 mb-3">Ingredient List</h4>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Define the ingredients and quantities needed for each portion of this meal.
+                    </div>
+
+                    {{ ingredients_formset.management_form }}
+
+                    <div id="ingredient-formset">
+                        {% for form in ingredients_formset.forms %}
+                        <div class="ingredient-form">
+                            {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.ingredient|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.quantity|as_crispy_field }}
+                                </div>
+                            </div>
+
+                            {% if form.instance.pk %}
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-row">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-row">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+
+                            {{ form.id }}
+                            {% if not form.instance.pk %}{{ form.meal }}{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" class="btn btn-outline-success mb-4" id="add-ingredient">
+                        <i class="fas fa-plus me-1"></i>Add Ingredient
+                    </button>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'meal-list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Save Meal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+  // Add ingredient button click handler
+  const addIngredientBtn = document.getElementById("add-ingredient")
+  const ingredientFormset = document.getElementById("ingredient-formset")
+
+  if (addIngredientBtn && ingredientFormset) {
+    addIngredientBtn.addEventListener("click", () => {
+      const forms = document.querySelectorAll(".ingredient-form")
+      const formNum = forms.length
+      const totalForms = document.getElementById("id_ingredients-TOTAL_FORMS")
+
+      // Clone the last form
+      const newForm = forms[forms.length - 1].cloneNode(true)
+
+      // Update form index
+      const newFormIndex = formNum
+      newForm.innerHTML = newForm.innerHTML.replace(/ingredients-\d+/g, `ingredients-${newFormIndex}`)
+
+      // Clear input values
+      const inputs = newForm.querySelectorAll("input, select")
+      inputs.forEach((input) => {
+        if (input.type !== "hidden" || !input.name.includes("id")) {
+          input.value = ""
+        }
+      })
+
+      // Fix IDs and labels on newly added form
+      const labels = newForm.querySelectorAll("label")
+      labels.forEach((label) => {
+        const forAttr = label.getAttribute("for")
+        if (forAttr) {
+          label.setAttribute("for", forAttr.replace(/\d+/, newFormIndex))
+        }
+      })
+
+      // Add new form to the DOM
+      ingredientFormset.appendChild(newForm)
+
+      // Update total forms count
+      totalForms.value = formNum + 1
+
+      // Setup delete button for the new row
+      setupDeleteButton(newForm.querySelector(".delete-row"))
+    })
+  }
+
+  // Setup delete buttons for existing ingredients
+  function setupDeleteButton(button) {
+    button.addEventListener("click", function () {
+      const formRow = this.closest(".ingredient-form")
+      const deleteCheckbox = formRow.querySelector('input[type="checkbox"][name$="-DELETE"]')
+
+      if (deleteCheckbox) {
+        deleteCheckbox.checked = true
+        formRow.style.display = "none"
+      } else {
+        // For new forms that don't have a DELETE checkbox
+        formRow.remove()
+      }
+    })
+  }
+
+  // Initialize delete buttons for existing rows
+  const deleteButtons = document.querySelectorAll(".delete-row")
+  deleteButtons.forEach(setupDeleteButton)
+})
+
+</script>
+{% endblock %}

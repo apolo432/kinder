@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}My Profile - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-user me-2"></i>My Profile
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-id-card me-2"></i>User Information
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Username</label>
+                    <p>{{ user.username }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Full Name</label>
+                    <p>{{ user.get_full_name|default:"Not provided" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Email</label>
+                    <p>{{ user.email|default:"Not provided" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Role</label>
+                    <p><span class="badge bg-primary">{{ user.get_role_display }}</span></p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Last Login</label>
+                    <p>{{ user.last_login|date:"M d, Y H:i"|default:"Never" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Date Joined</label>
+                    <p>{{ user.date_joined|date:"M d, Y" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-history me-2"></i>Recent Activity
+            </div>
+            <div class="card-body p-0">
+                <!-- Recent meals served by this user -->
+                <div class="list-group list-group-flush">
+                    {% for serving in user.served_meals.all|slice:":10" %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Served {{ serving.meal.name }}</h6>
+                            <small>{{ serving.serving_date|date:"M d, Y H:i" }}</small>
+                        </div>
+                        <p class="mb-1">{{ serving.servings }} portion(s)</p>
+                        {% if serving.notes %}
+                        <small>Notes: {{ serving.notes }}</small>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-3">
+                        No recent meal serving activity
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-key me-2"></i>Account Security
+            </div>
+            <div class="card-body">
+                <p>For security reasons, if you need to change your password, please contact an administrator.</p>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger">
+                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,461 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+
+{% block title %}Dashboard - Kindergarten Meal System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'meal-list' %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-utensils me-1"></i>Meals</a>
+            <a href="{% url 'ingredient-list' %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-carrot me-1"></i>Ingredients</a>
+            {% if user.is_admin or user.is_manager %}
+            <a href="{% url 'generate-report' %}" class="btn btn-sm btn-outline-success"><i class="fas fa-file-alt me-1"></i>Generate Report</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Today's Meals</h6>
+                        <h2 class="mb-0">{{ today_meals_count }}</h2>
+                    </div>
+                    <i class="fas fa-utensils fa-2x"></i>
+                </div>
+                <small>{{ today_servings_count }} portions served today</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">This Week</h6>
+                        <h2 class="mb-0">{{ week_servings_count }}</h2>
+                    </div>
+                    <i class="fas fa-calendar-week fa-2x"></i>
+                </div>
+                <small>Portions served this week</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Ingredients</h6>
+                        <h2 class="mb-0" id="ingredient-count">...</h2>
+                    </div>
+                    <i class="fas fa-carrot fa-2x"></i>
+                </div>
+                <small><span id="low-ingredients-count">...</span> ingredients below threshold</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white {% if current_report and current_report.high_discrepancy %}bg-danger{% else %}bg-secondary{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Discrepancy Rate</h6>
+                        <h2 class="mb-0">{% if current_report %}{{ current_report.discrepancy_rate }}%{% else %}N/A{% endif %}</h2>
+                    </div>
+                    <i class="fas fa-chart-line fa-2x"></i>
+                </div>
+                <small>{% if current_report and current_report.high_discrepancy %}High discrepancy detected!{% else %}Within acceptable limits{% endif %}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Low Ingredients Alert -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Low Ingredients</span>
+                <a href="{% url 'ingredient-list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="low-ingredients-list">
+                    {% if low_ingredients %}
+                        {% for ingredient in low_ingredients %}
+                        <a href="{% url 'ingredient-detail' ingredient.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ ingredient.name }}</h6>
+                                <small class="text-danger">{{ ingredient.current_quantity }}g</small>
+                            </div>
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: {% widthratio ingredient.current_quantity ingredient.threshold_quantity 100 %}%"></div>
+                            </div>
+                            <small>Threshold: {{ ingredient.threshold_quantity }}g</small>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center text-muted">
+                            No ingredients below threshold
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-history me-2"></i>Recent Meal Servings</span>
+                <a href="{% url 'serving-list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Meal</th>
+                                <th>Servings</th>
+                                <th>Served By</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-servings">
+                            {% if recent_servings %}
+                                {% for serving in recent_servings %}
+                                <tr>
+                                    <td>{{ serving.meal.name }}</td>
+                                    <td>{{ serving.servings }}</td>
+                                    <td>{{ serving.served_by.username }}</td>
+                                    <td>{{ serving.serving_date|date:"M d, H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">No recent meal servings</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user.is_admin or user.is_manager %}
+<!-- Charts Section -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-pie me-2"></i>Ingredient Usage
+            </div>
+            <div class="card-body">
+                <canvas id="ingredientUsageChart" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar me-2"></i>Meal Servings
+            </div>
+            <div class="card-body">
+                <canvas id="mealServingsChart" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Discrepancy Chart -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-line me-2"></i>Monthly Discrepancy Rate
+            </div>
+            <div class="card-body">
+                <canvas id="discrepancyChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // WebSocket connection for real-time updates
+    const inventorySocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/inventory/'
+    );
+
+    const mealServingSocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/meal-servings/'
+    );
+
+    // Debug messages for WebSocket connections
+    inventorySocket.onopen = function(e) {
+        console.log("Inventory WebSocket connection established");
+    };
+
+    inventorySocket.onerror = function(e) {
+        console.error("Inventory WebSocket error:", e);
+    };
+
+    mealServingSocket.onopen = function(e) {
+        console.log("Meal Serving WebSocket connection established");
+    };
+
+    mealServingSocket.onerror = function(e) {
+        console.error("Meal Serving WebSocket error:", e);
+    };
+
+    // Handle inventory updates
+    inventorySocket.onmessage = function(e) {
+        console.log("Inventory WebSocket message received:", e.data);
+        const data = JSON.parse(e.data);
+
+        if (data.type === 'inventory_update') {
+            // Update low ingredients list if necessary
+            if (data.is_below_threshold) {
+                updateLowIngredientsList();
+            }
+        } else if (data.type === 'low_ingredient_alert') {
+            // Show a notification for low ingredient
+            showNotification('Low Ingredient Alert',
+                `${data.ingredient_name} is running low (${data.current_quantity}g/${data.threshold_quantity}g)`,
+                'warning');
+        } else if (data.type === 'low_ingredients') {
+            // Update low ingredients count
+            document.getElementById('low-ingredients-count').textContent = data.ingredients.length;
+        }
+    };
+
+    // Handle meal serving updates
+    mealServingSocket.onmessage = function(e) {
+        console.log("Meal Serving WebSocket message received:", e.data);
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'meal_served') {
+            // Update recent servings table
+            updateRecentServings(data);
+            
+            // Show a notification
+            showNotification('Meal Served', 
+                `${data.meal_name} (${data.servings} servings) by ${data.served_by}`, 
+                'success');
+        } else if (data.type === 'portions_update') {
+            // Update portions display if on the meals page
+            const portionsElement = document.getElementById(`meal-${data.meal_id}-portions`);
+            if (portionsElement) {
+                portionsElement.textContent = data.max_portions;
+            }
+        }
+    };
+    
+    // Function to update low ingredients list
+    function updateLowIngredientsList() {
+        // Request low ingredients from the server
+        inventorySocket.send(JSON.stringify({
+            'type': 'get_low_ingredients'
+        }));
+    }
+    
+    // Function to update recent servings table
+    function updateRecentServings(data) {
+        const tbody = document.getElementById('recent-servings');
+        if (!tbody) return;
+        
+        // Create a new row for the serving
+        const tr = document.createElement('tr');
+        tr.className = 'highlight';
+        
+        // Format the date
+        const date = new Date(data.timestamp);
+        const formattedDate = `${date.toLocaleString('default', { month: 'short' })} ${date.getDate()}, ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+        
+        // Add the serving data
+        tr.innerHTML = `
+            <td>${data.meal_name}</td>
+            <td>${data.servings}</td>
+            <td>${data.served_by}</td>
+            <td>${formattedDate}</td>
+        `;
+        
+        // Add the new row at the top
+        tbody.insertBefore(tr, tbody.firstChild);
+        
+        // Remove the last row if there are more than 10
+        if (tbody.children.length > 10) {
+            tbody.removeChild(tbody.lastChild);
+        }
+        
+        // Remove any "no servings" message
+        const noServingsRow = tbody.querySelector('tr td[colspan="4"]');
+        if (noServingsRow) {
+            tbody.removeChild(noServingsRow.parentNode);
+        }
+    }
+    
+    // Function to show a notification
+    function showNotification(title, message, type) {
+        // Create alert container if it doesn't exist
+        let alertContainer = document.querySelector('.alert-container');
+        if (!alertContainer) {
+            alertContainer = document.createElement('div');
+            alertContainer.className = 'alert-container';
+            document.body.appendChild(alertContainer);
+        }
+        
+        // Create the alert
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            <strong>${title}</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        // Add the alert to the container
+        alertContainer.appendChild(alert);
+        
+        // Auto-close after 5 seconds
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    }
+    
+    // Load the charts when the page is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get ingredient count
+        fetch('/ingredients/json/')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('ingredient-count').textContent = data.length;
+                const lowIngredientsCount = data.filter(ingredient => ingredient.is_below_threshold).length;
+                document.getElementById('low-ingredients-count').textContent = lowIngredientsCount;
+            });
+        
+        {% if user.is_admin or user.is_manager %}
+        // Ingredient Usage Chart
+        fetch('/reports/api/ingredient-usage-data/?period=month')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('ingredientUsageChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(item => item.period),
+                        datasets: [
+                            {
+                                label: 'Usage (g)',
+                                data: data.map(item => item.usage),
+                                backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                                borderColor: 'rgb(255, 99, 132)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Delivery (g)',
+                                data: data.map(item => item.delivery),
+                                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                borderColor: 'rgb(54, 162, 235)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            });
+        
+        // Meal Servings Chart
+        fetch('/reports/api/meal-serving-data/?period=month')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('mealServingsChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(item => item.period),
+                        datasets: [{
+                            label: 'Servings',
+                            data: data.map(item => item.servings),
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgb(75, 192, 192)',
+                            borderWidth: 2,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            });
+        
+        // Discrepancy Chart
+        fetch('/reports/api/discrepancy-data/')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('discrepancyChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(item => item.period_label),
+                        datasets: [
+                            {
+                                label: 'Discrepancy Rate (%)',
+                                data: data.map(item => item.discrepancy_rate),
+                                backgroundColor: data.map(item => item.high_discrepancy ? 'rgba(255, 99, 132, 0.2)' : 'rgba(75, 192, 192, 0.2)'),
+                                borderColor: data.map(item => item.high_discrepancy ? 'rgb(255, 99, 132)' : 'rgb(75, 192, 192)'),
+                                borderWidth: 2,
+                                tension: 0.1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                suggestedMax: 20
+                            }
+                        },
+                        elements: {
+                            point: {
+                                radius: 5,
+                                hitRadius: 10,
+                                hoverRadius: 7,
+                            }
+                        }
+                    }
+                });
+            });
+        {% endif %}
+    });
+</script>
+{% endblock %}
